@@ -223,11 +223,19 @@ export default function Home() {
         console.log('Photo metadata saved successfully');
       }
 
-      // Generate QR code
-      const qrDataUrl = await QRCode.toDataURL(viewUrl, {
+      // Generate QR code - use the secure_url directly (simpler and more reliable)
+      console.log('=== GENERATING QR CODE ===');
+      console.log('QR Code will point to Cloudinary secure_url directly');
+      console.log('Secure URL:', cloudinaryUrl);
+      
+      // Use the Cloudinary secure_url directly in the QR code - it's guaranteed to work
+      const qrDataUrl = await QRCode.toDataURL(cloudinaryUrl, {
         width: 200,
         margin: 2,
+        errorCorrectionLevel: 'M',
       });
+      
+      console.log('✅ QR code generated with secure_url');
 
       // Generate PDF
       const pdf = new jsPDF({
@@ -267,6 +275,8 @@ export default function Home() {
       pdf.text(`Date: ${new Date().toLocaleDateString()}`, 5, metadataYPos);
       pdf.text(`Time: ${new Date().toLocaleTimeString()}`, 5, metadataYPos + 5);
       pdf.text(`View: ${viewUrl}`, 5, metadataYPos + 10, { maxWidth: 70 });
+      
+      console.log('✅ PDF metadata added');
 
       // Download PDF
       pdf.save(`photo-receipt-${photoId}.pdf`);
