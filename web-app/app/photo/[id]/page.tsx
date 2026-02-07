@@ -149,22 +149,29 @@ export default async function PhotoPage({
   // If secure_url is in query params, use it directly (most reliable)
   if (secureUrlFromQuery) {
     const decodedUrl = decodeURIComponent(secureUrlFromQuery);
-    console.log('Using secure_url from query params:', decodedUrl);
-    const photo = await getPhotoData(photoId);
-    if (photo) {
-      return <PhotoViewer photo={{ ...photo, cloudinaryUrl: decodedUrl }} />;
+    console.log('=== USING SECURE_URL FROM QUERY PARAMS ===');
+    console.log('URL from query:', decodedUrl);
+    console.log('Photo ID:', photoId);
+    
+    // Verify the URL is valid
+    if (!decodedUrl.includes('res.cloudinary.com')) {
+      console.error('Invalid Cloudinary URL in query params:', decodedUrl);
     }
-    // Fallback: create photo object with secure_url from query
+    
+    // Always use the secure_url from query - it's the most reliable
+    const photo = await getPhotoData(photoId);
     return (
       <PhotoViewer 
         photo={{
           photoId,
-          cloudinaryUrl: decodedUrl,
-          timestamp: new Date().toISOString(),
+          cloudinaryUrl: decodedUrl, // Always use the secure_url from query
+          timestamp: photo?.timestamp || new Date().toISOString(),
         }}
       />
     );
   }
+  
+  console.log('No secure_url in query params, falling back to API/database lookup');
   
   const photo = await getPhotoData(photoId);
 

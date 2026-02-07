@@ -133,12 +133,21 @@ export default function Home() {
       }
 
       const uploadData = await uploadResponse.json();
-      console.log('Upload response:', uploadData);
+      console.log('=== FULL CLOUDINARY UPLOAD RESPONSE ===');
+      console.log(JSON.stringify(uploadData, null, 2));
       
       const cloudinaryUrl = uploadData.secure_url;
       if (!cloudinaryUrl) {
-        throw new Error('No secure_url in Cloudinary response');
+        console.error('Missing secure_url! Full response:', uploadData);
+        throw new Error('No secure_url in Cloudinary response. Check your upload preset configuration.');
       }
+      
+      // Verify the URL works by checking if it's a valid Cloudinary URL
+      if (!cloudinaryUrl.includes('res.cloudinary.com')) {
+        console.error('Invalid secure_url format:', cloudinaryUrl);
+        throw new Error('Invalid Cloudinary URL format');
+      }
+      
       setPhotoUrl(cloudinaryUrl);
 
       // Use the full public_id as photoId (Cloudinary handles folders/namespaces)
@@ -151,18 +160,28 @@ export default function Home() {
       console.log('=== UPLOAD SUCCESS ===');
       console.log('Photo ID (public_id):', photoId);
       console.log('Photo ID length:', photoId.length);
-      console.log('Cloudinary URL (secure_url):', cloudinaryUrl);
-      console.log('Full upload response:', uploadData);
+      console.log('Cloudinary secure_url:', cloudinaryUrl);
+      console.log('Public ID from response:', uploadData.public_id);
+      
+      // CRITICAL: Test if the secure_url actually works
+      const testResponse = await fetch(cloudinaryUrl, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        console.error(`⚠️ WARNING: secure_url returns ${testResponse.status}! URL: ${cloudinaryUrl}`);
+        console.error('This means the image might not exist at this URL');
+      } else {
+        console.log('✅ secure_url verified - image exists at:', cloudinaryUrl);
+      }
       
       // URL encode the photoId for the route
-      // IMPORTANT: Also encode the secure_url as a query param as backup
+      // CRITICAL: Include secure_url as query param - this is the ONLY reliable way
       const encodedPhotoId = encodeURIComponent(photoId);
       const encodedSecureUrl = encodeURIComponent(cloudinaryUrl);
       const viewUrl = `${window.location.origin}/photo/${encodedPhotoId}?url=${encodedSecureUrl}`;
       setViewUrl(viewUrl);
-      console.log('View URL:', viewUrl);
-      console.log('Encoded Photo ID:', encodedPhotoId);
-      console.log('Secure URL (backup):', cloudinaryUrl);
+      console.log('=== VIEW URL GENERATED ===');
+      console.log('View URL (with secure_url backup):', viewUrl);
+      console.log('Photo ID for route:', photoId);
+      console.log('Secure URL (will be used):', cloudinaryUrl);
 
       // Save metadata to API - CRITICAL: Save the secure_url, not a constructed URL
       const saveResponse = await fetch('/api/photos', {
