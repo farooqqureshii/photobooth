@@ -68,11 +68,12 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
                   fill
                   className="object-contain"
                   priority
-                  onError={() => {
-                    console.error('Next Image failed, falling back to img tag');
+                  onError={(e) => {
+                    console.error('Next Image failed, URL:', photo.cloudinaryUrl);
+                    console.error('Error details:', e);
                     setImageError(true);
                   }}
-                  unoptimized={photo.cloudinaryUrl.includes('cloudinary.com')}
+                  unoptimized={true}
                 />
               ) : (
                 <img
@@ -81,7 +82,11 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     console.error('Image failed to load:', photo.cloudinaryUrl);
-                    e.currentTarget.style.display = 'none';
+                    console.error('Photo ID:', photo.photoId);
+                    // Try alternative URL formats
+                    const altUrl = photo.cloudinaryUrl.replace(/\.(jpg|jpeg|png)$/i, '') + '.jpg';
+                    console.log('Trying alternative URL:', altUrl);
+                    e.currentTarget.src = altUrl;
                   }}
                 />
               )}
@@ -112,20 +117,28 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
               </p>
             </div>
             
-            {/* Debug: Show URL (remove in production) */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1">Debug: Image URL</p>
-                <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100 break-all">
-                  {photo.cloudinaryUrl}
-                </p>
-                {imageError && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                    ⚠️ Image failed to load. Check browser console for errors.
+            {/* Debug: Show URL - always show for debugging */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1 font-semibold">🔍 Debug Info</p>
+              <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1">Image URL:</p>
+              <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100 break-all bg-yellow-100 dark:bg-yellow-900/40 p-2 rounded">
+                {photo.cloudinaryUrl}
+              </p>
+              <p className="text-xs text-yellow-800 dark:text-yellow-200 mt-2 mb-1">Photo ID:</p>
+              <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100">
+                {photo.photoId}
+              </p>
+              {imageError && (
+                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                  <p className="text-xs text-red-600 dark:text-red-400 font-semibold">
+                    ⚠️ Image failed to load
                   </p>
-                )}
-              </div>
-            )}
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    Try opening this URL directly in a new tab to test if the image exists.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Download Button */}
             <button

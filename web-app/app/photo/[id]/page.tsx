@@ -24,13 +24,33 @@ async function getPhotoData(photoId: string) {
     });
 
     if (!response.ok) {
-      // If metadata not found, try to construct Cloudinary URL from photoId
+      // API doesn't have the photo (server restarted or photo not saved)
+      // Try to fetch from Cloudinary directly using their Admin API
+      console.log('API returned 404, trying to fetch from Cloudinary directly...');
+      
+      try {
+        // Use server-side API route to fetch from Cloudinary
+        const cloudinaryFetchUrl = `${baseUrl}/api/cloudinary-fetch?id=${encodeURIComponent(decodedPhotoId)}`;
+        const cloudinaryResponse = await fetch(cloudinaryFetchUrl, { cache: 'no-store' });
+        
+        if (cloudinaryResponse.ok) {
+          const cloudinaryData = await cloudinaryResponse.json();
+          console.log('Fetched from Cloudinary:', cloudinaryData);
+          return {
+            photoId: decodedPhotoId,
+            cloudinaryUrl: cloudinaryData.secure_url || cloudinaryData.url,
+            timestamp: cloudinaryData.created_at || new Date().toISOString(),
+          };
+        }
+      } catch (err) {
+        console.error('Error fetching from Cloudinary:', err);
+      }
+      
+      // Last resort: construct URL (often fails if public_id format is wrong)
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       if (cloudName && decodedPhotoId) {
-        // Cloudinary public_id - construct URL (no extension needed, Cloudinary handles it)
-        // Try with and without format, Cloudinary will serve the original format
         const cloudinaryUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}`;
-        console.log('Constructed Cloudinary URL (fallback):', cloudinaryUrl);
+        console.warn('Using constructed URL (may not work):', cloudinaryUrl);
         return {
           photoId: decodedPhotoId,
           cloudinaryUrl,
@@ -42,11 +62,35 @@ async function getPhotoData(photoId: string) {
 
     const data = await response.json();
     console.log('Photo data from API:', data);
-    // Ensure photoId matches the decoded version and cloudinaryUrl exists
+    
+    // CRITICAL: Always use the cloudinaryUrl from API if it exists
+    // It's the secure_url from Cloudinary which is guaranteed to work
+    if (!data.cloudinaryUrl) {
+      console.error('No cloudinaryUrl in API response!', data);
+      // Last resort: try to construct it, but this often fails
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      if (cloudName) {
+        // Try multiple formats
+        const formats = [
+          `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}`,
+          `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}.jpg`,
+          `https://res.cloudinary.com/${cloudName}/image/upload/v1/${decodedPhotoId}`,
+        ];
+        console.warn('Trying fallback URLs:', formats);
+        return {
+          ...data,
+          photoId: decodedPhotoId,
+          cloudinaryUrl: formats[0], // Try first format
+        };
+      }
+      return null;
+    }
+    
+    // Use the cloudinaryUrl from API (this is the secure_url from Cloudinary)
     return { 
       ...data, 
       photoId: decodedPhotoId,
-      cloudinaryUrl: data.cloudinaryUrl || `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${decodedPhotoId}`
+      cloudinaryUrl: data.cloudinaryUrl // This should be the secure_url
     };
   } catch (error) {
     console.error('Error fetching photo:', error);

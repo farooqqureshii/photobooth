@@ -148,24 +148,35 @@ export default function Home() {
         throw new Error('No public_id returned from Cloudinary. Check your upload preset configuration.');
       }
       
-      console.log('Photo ID:', photoId);
+      console.log('=== UPLOAD SUCCESS ===');
+      console.log('Photo ID (public_id):', photoId);
+      console.log('Photo ID length:', photoId.length);
+      console.log('Cloudinary URL (secure_url):', cloudinaryUrl);
+      console.log('Full upload response:', uploadData);
       
       // URL encode the photoId for the route
       const encodedPhotoId = encodeURIComponent(photoId);
       const viewUrl = `${window.location.origin}/photo/${encodedPhotoId}`;
       setViewUrl(viewUrl);
       console.log('View URL:', viewUrl);
+      console.log('Encoded Photo ID:', encodedPhotoId);
 
-      // Save metadata to API
-      await fetch('/api/photos', {
+      // Save metadata to API - CRITICAL: Save the secure_url, not a constructed URL
+      const saveResponse = await fetch('/api/photos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           photoId,
-          cloudinaryUrl,
+          cloudinaryUrl, // This is uploadData.secure_url - the REAL URL that works
           timestamp: new Date().toISOString(),
         }),
       });
+      
+      if (!saveResponse.ok) {
+        console.error('Failed to save photo metadata to API');
+      } else {
+        console.log('Photo metadata saved successfully');
+      }
 
       // Generate QR code
       const qrDataUrl = await QRCode.toDataURL(viewUrl, {
