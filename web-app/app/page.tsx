@@ -203,8 +203,8 @@ export default function Home() {
       console.log('🔗 Encoded Secure URL:', encodedSecureUrl);
       console.log('📋 URL Length:', viewUrl.length);
       
-      // Show alert with the URL so user can copy it
-      alert(`Photo uploaded! View URL:\n\n${viewUrl}\n\n(Copy this URL to test if the image loads)`);
+      // Don't show alert - it disappears too fast
+      // The URL will be displayed on the page below
 
       // Save metadata to API - CRITICAL: Save the secure_url, not a constructed URL
       const saveResponse = await fetch('/api/photos', {
@@ -274,10 +274,11 @@ export default function Home() {
       setIsUploading(false);
       setIsGeneratingPDF(false);
       
-      // Reset for next photo
+      // DON'T reset viewUrl - keep it visible so user can copy it
+      // Reset photo for next capture, but keep the URL displayed
       setPhoto(null);
       setPhotoUrl(null);
-      setViewUrl(null);
+      // Keep viewUrl visible: setViewUrl(null);
     } catch (error: any) {
       console.error('Error:', error);
       const errorMessage = error?.message || 'Failed to upload photo or generate PDF';
@@ -397,12 +398,30 @@ export default function Home() {
               </button>
             </div>
             {viewUrl && (
-              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  PDF generated! View photo at:{' '}
-                  <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="underline">
-                    {viewUrl}
-                  </a>
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-300 dark:border-green-700">
+                <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
+                  ✅ PDF generated! Copy the URL below to test:
+                </p>
+                <div className="flex gap-2 items-start">
+                  <input
+                    type="text"
+                    readOnly
+                    value={viewUrl}
+                    className="flex-1 p-2 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 rounded text-xs font-mono text-gray-900 dark:text-white break-all"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(viewUrl);
+                      alert('URL copied to clipboard!');
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                  Or <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="underline font-semibold">click here to open</a>
                 </p>
               </div>
             )}
