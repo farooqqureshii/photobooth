@@ -110,23 +110,30 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
             </div>
             
             {/* Debug: Show URL - always show for debugging */}
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1 font-semibold">🔍 Debug Info</p>
-              <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1">Image URL:</p>
-              <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100 break-all bg-yellow-100 dark:bg-yellow-900/40 p-2 rounded">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border-2 border-yellow-400 dark:border-yellow-600">
+              <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2 font-bold">🔍 DEBUG INFO</p>
+              <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1">Image URL Being Used:</p>
+              <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100 break-all bg-yellow-100 dark:bg-yellow-900/40 p-2 rounded border border-yellow-300">
                 {photo.cloudinaryUrl}
               </p>
               <p className="text-xs text-yellow-800 dark:text-yellow-200 mt-2 mb-1">Photo ID:</p>
               <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100">
                 {photo.photoId}
               </p>
-              {imageError && (
-                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+              <p className="text-xs text-yellow-800 dark:text-yellow-200 mt-2 mb-1">URL Has Version Number:</p>
+              <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100">
+                {photo.cloudinaryUrl.includes('/v') ? '✅ YES' : '❌ NO - THIS IS THE PROBLEM'}
+              </p>
+              {!photo.cloudinaryUrl.includes('/v') && (
+                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-300">
                   <p className="text-xs text-red-600 dark:text-red-400 font-semibold">
-                    ⚠️ Image failed to load
+                    ❌ ERROR: URL is missing version number!
                   </p>
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    Try opening this URL directly in a new tab to test if the image exists.
+                    The URL should look like: .../upload/v1234567890/am0.jpg
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    But it's showing: {photo.cloudinaryUrl}
                   </p>
                 </div>
               )}

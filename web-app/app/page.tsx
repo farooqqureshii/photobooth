@@ -194,6 +194,15 @@ export default function Home() {
       const encodedPhotoId = encodeURIComponent(photoId);
       const encodedSecureUrl = encodeURIComponent(cloudinaryUrl);
       const viewUrl = `${window.location.origin}/photo/${encodedPhotoId}?url=${encodedSecureUrl}`;
+      
+      // CRITICAL: Verify the URL is correct before using it
+      if (!viewUrl.includes('?url=')) {
+        console.error('❌ CRITICAL ERROR: viewUrl missing query parameter!');
+        console.error('viewUrl:', viewUrl);
+        console.error('cloudinaryUrl:', cloudinaryUrl);
+        throw new Error('Failed to generate view URL with query parameter');
+      }
+      
       setViewUrl(viewUrl);
       
       console.log('=== VIEW URL GENERATED ===');
@@ -202,9 +211,7 @@ export default function Home() {
       console.log('🌐 Secure URL (Cloudinary):', cloudinaryUrl);
       console.log('🔗 Encoded Secure URL:', encodedSecureUrl);
       console.log('📋 URL Length:', viewUrl.length);
-      
-      // Don't show alert - it disappears too fast
-      // The URL will be displayed on the page below
+      console.log('✅ URL includes ?url=:', viewUrl.includes('?url='));
 
       // Save metadata to API - CRITICAL: Save the secure_url, not a constructed URL
       const saveResponse = await fetch('/api/photos', {
@@ -274,7 +281,64 @@ export default function Home() {
       pdf.setFontSize(8);
       pdf.text(`Date: ${new Date().toLocaleDateString()}`, 5, metadataYPos);
       pdf.text(`Time: ${new Date().toLocaleTimeString()}`, 5, metadataYPos + 5);
-      pdf.text(`View: ${viewUrl}`, 5, metadataYPos + 10, { maxWidth: 70 });
+      
+      // CRITICAL: Use the viewUrl variable directly (it's in scope here)
+      // Verify it has the query parameter
+      console.log('=== ADDING URL TO PDF ===');
+      console.log('viewUrl variable:', viewUrl);
+      console.log('Has ?url=:', viewUrl.includes('?url='));
+      console.log('Full URL:', viewUrl);
+      
+      // Determine the actual URL to use
+      let urlToUse = viewUrl;
+      if (!viewUrl || !viewUrl.includes('?url=')) {
+        console.error('❌ FATAL ERROR: viewUrl is missing query parameter!');
+        console.error('viewUrl value:', viewUrl);
+        console.error('cloudinaryUrl:', cloudinaryUrl);
+        // Use cloudinaryUrl directly as fallback
+        urlToUse = `${window.location.origin}/photo/${encodeURIComponent(photoId)}?url=${encodeURIComponent(cloudinaryUrl)}`;
+        console.error('Using fallback URL:', urlToUse);
+      }
+      
+      // CRITICAL: Log the exact URL that will be used in the PDF link
+      console.log('=== PDF LINK URL ===');
+      console.log('✅ Full URL for PDF link:', urlToUse);
+      console.log('✅ URL includes ?url=:', urlToUse.includes('?url='));
+      console.log('✅ URL length:', urlToUse.length);
+      
+      // Add "View: " label
+      const labelY = metadataYPos + 10;
+      pdf.text('View:', 5, labelY);
+      
+      // Calculate where URL text starts (after "View: " label)
+      const labelWidth = pdf.getTextWidth('View: ');
+      const urlXPos = 5 + labelWidth + 1; // 1mm spacing after label
+      const urlStartY = labelY;
+      const lineHeight = 4;
+      const maxUrlWidth = 70 - labelWidth - 1; // Available width for URL
+      
+      // Split URL across multiple lines if needed
+      const urlLines = pdf.splitTextToSize(urlToUse, maxUrlWidth);
+      
+      // Add the URL text line by line
+      urlLines.forEach((line: string, index: number) => {
+        const yPos = urlStartY + (index * lineHeight);
+        pdf.text(line, urlXPos, yPos);
+      });
+      
+      // CRITICAL: Add clickable link covering ALL URL lines
+      // jsPDF link method: link(x, y, width, height, {url: '...'})
+      // y position needs to account for text baseline (subtract ~3mm for proper click area)
+      const totalUrlHeight = urlLines.length * lineHeight;
+      const linkY = urlStartY - 3;
+      
+      console.log('=== ADDING PDF LINK ===');
+      console.log('Link X:', urlXPos, 'Y:', linkY, 'Width:', maxUrlWidth, 'Height:', totalUrlHeight);
+      console.log('Link URL:', urlToUse);
+      
+      pdf.link(urlXPos, linkY, maxUrlWidth, totalUrlHeight, { url: urlToUse });
+      
+      console.log('✅ PDF link added successfully');
       
       console.log('✅ PDF metadata added');
 
