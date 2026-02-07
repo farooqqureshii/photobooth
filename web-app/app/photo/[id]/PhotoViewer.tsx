@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 
 interface PhotoData {
   photoId: string;
@@ -11,7 +10,6 @@ interface PhotoData {
 
 export default function PhotoViewer({ photo }: { photo: PhotoData }) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [imageError, setImageError] = useState(false);
   
   // Log the URL for debugging
   console.log('=== PHOTO VIEWER RENDERED ===');
@@ -19,6 +17,11 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
   console.log('Photo Cloudinary URL:', photo.cloudinaryUrl);
   console.log('URL includes res.cloudinary.com:', photo.cloudinaryUrl.includes('res.cloudinary.com'));
   console.log('URL length:', photo.cloudinaryUrl.length);
+  
+  // Validate URL
+  if (!photo.cloudinaryUrl || !photo.cloudinaryUrl.includes('res.cloudinary.com')) {
+    console.error('❌ INVALID CLOUDINARY URL:', photo.cloudinaryUrl);
+  }
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -64,36 +67,21 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
 
           {/* Photo */}
           <div className="p-6 bg-gray-50 dark:bg-gray-900">
-            <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-lg">
-              {!imageError ? (
-                <Image
-                  src={photo.cloudinaryUrl}
-                  alt="Photo"
-                  fill
-                  className="object-contain"
-                  priority
-                  onError={(e) => {
-                    console.error('Next Image failed, URL:', photo.cloudinaryUrl);
-                    console.error('Error details:', e);
-                    setImageError(true);
-                  }}
-                  unoptimized={true}
-                />
-              ) : (
-                <img
-                  src={photo.cloudinaryUrl}
-                  alt="Photo"
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    console.error('Image failed to load:', photo.cloudinaryUrl);
-                    console.error('Photo ID:', photo.photoId);
-                    // Try alternative URL formats
-                    const altUrl = photo.cloudinaryUrl.replace(/\.(jpg|jpeg|png)$/i, '') + '.jpg';
-                    console.log('Trying alternative URL:', altUrl);
-                    e.currentTarget.src = altUrl;
-                  }}
-                />
-              )}
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-lg flex items-center justify-center">
+              <img
+                src={photo.cloudinaryUrl}
+                alt="Photo"
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+                onLoad={() => {
+                  console.log('✅ Image loaded successfully:', photo.cloudinaryUrl);
+                }}
+                onError={(e) => {
+                  console.error('❌ Image failed to load:', photo.cloudinaryUrl);
+                  console.error('Photo ID:', photo.photoId);
+                  // Don't try alternatives - if secure_url doesn't work, nothing will
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
           </div>
 

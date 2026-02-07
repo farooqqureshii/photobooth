@@ -25,8 +25,8 @@ async function getPhotoData(photoId: string) {
 
     if (!response.ok) {
       // API doesn't have the photo (server restarted or photo not saved)
-      // Try to fetch from Cloudinary directly using their Admin API
-      console.log('API returned 404, trying to fetch from Cloudinary directly...');
+      // ALWAYS try to fetch from Cloudinary - this is the only reliable way
+      console.log('API returned 404, fetching from Cloudinary...');
       
       try {
         // Use server-side API route to fetch from Cloudinary
@@ -35,28 +35,23 @@ async function getPhotoData(photoId: string) {
         
         if (cloudinaryResponse.ok) {
           const cloudinaryData = await cloudinaryResponse.json();
-          console.log('Fetched from Cloudinary:', cloudinaryData);
-          return {
-            photoId: decodedPhotoId,
-            cloudinaryUrl: cloudinaryData.secure_url || cloudinaryData.url,
-            timestamp: cloudinaryData.created_at || new Date().toISOString(),
-          };
+          console.log('✅ Fetched from Cloudinary:', cloudinaryData);
+          if (cloudinaryData.secure_url) {
+            return {
+              photoId: decodedPhotoId,
+              cloudinaryUrl: cloudinaryData.secure_url,
+              timestamp: cloudinaryData.created_at || new Date().toISOString(),
+            };
+          }
+        } else {
+          console.error('❌ Cloudinary fetch failed:', cloudinaryResponse.status);
         }
       } catch (err) {
-        console.error('Error fetching from Cloudinary:', err);
+        console.error('❌ Error fetching from Cloudinary:', err);
       }
       
-      // Last resort: construct URL (often fails if public_id format is wrong)
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      if (cloudName && decodedPhotoId) {
-        const cloudinaryUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}`;
-        console.warn('Using constructed URL (may not work):', cloudinaryUrl);
-        return {
-          photoId: decodedPhotoId,
-          cloudinaryUrl,
-          timestamp: new Date().toISOString(),
-        };
-      }
+      // If we get here, the photo doesn't exist - don't construct a fake URL
+      console.error('❌ Photo not found in Cloudinary. Photo ID:', decodedPhotoId);
       return null;
     }
 
@@ -66,22 +61,21 @@ async function getPhotoData(photoId: string) {
     // CRITICAL: Always use the cloudinaryUrl from API if it exists
     // It's the secure_url from Cloudinary which is guaranteed to work
     if (!data.cloudinaryUrl) {
-      console.error('No cloudinaryUrl in API response!', data);
-      // Last resort: try to construct it, but this often fails
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      if (cloudName) {
-        // Try multiple formats
-        const formats = [
-          `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}`,
-          `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}.jpg`,
-          `https://res.cloudinary.com/${cloudName}/image/upload/v1/${decodedPhotoId}`,
-        ];
-        console.warn('Trying fallback URLs:', formats);
-        return {
-          ...data,
-          photoId: decodedPhotoId,
-          cloudinaryUrl: formats[0], // Try first format
-        };
+      console.error('❌ No cloudinaryUrl in API response!', data);
+      // Try fetching from Cloudinary API instead
+      try {
+        const cloudinaryFetchUrl = `${baseUrl}/api/cloudinary-fetch?id=${encodeURIComponent(decodedPhotoId)}`;
+        const cloudinaryResponse = await fetch(cloudinaryFetchUrl, { cache: 'no-store' });
+        if (cloudinaryResponse.ok) {
+          const cloudinaryData = await cloudinaryResponse.json();
+          return {
+            photoId: decodedPhotoId,
+            cloudinaryUrl: cloudinaryData.secure_url,
+            timestamp: data.timestamp || cloudinaryData.created_at || new Date().toISOString(),
+          };
+        }
+      } catch (err) {
+        console.error('Error fetching from Cloudinary:', err);
       }
       return null;
     }
@@ -93,17 +87,8 @@ async function getPhotoData(photoId: string) {
       cloudinaryUrl: data.cloudinaryUrl // This should be the secure_url
     };
   } catch (error) {
-    console.error('Error fetching photo:', error);
-    // Fallback: try to construct Cloudinary URL
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    if (cloudName && decodedPhotoId) {
-      const cloudinaryUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}`;
-      return {
-        photoId: decodedPhotoId,
-        cloudinaryUrl,
-        timestamp: new Date().toISOString(),
-      };
-    }
+    console.error('❌ Error fetching photo:', error);
+    // Don't construct fake URLs - they don't work
     return null;
   }
 }
@@ -155,28 +140,40 @@ export default async function PhotoPage({
   if (secureUrlFromQuery) {
     const decodedUrl = decodeURIComponent(secureUrlFromQuery);
     console.log('=== USING SECURE_URL FROM QUERY PARAMS ===');
-    console.log('URL from query:', decodedUrl);
-    console.log('Photo ID:', photoId);
+    console.log('✅ URL from query:', decodedUrl);
+    console.log('✅ Photo ID:', photoId);
+    console.log('✅ URL is valid:', decodedUrl.includes('res.cloudinary.com'));
     
     // Verify the URL is valid
     if (!decodedUrl.includes('res.cloudinary.com')) {
-      console.error('Invalid Cloudinary URL in query params:', decodedUrl);
+      console.error('❌ Invalid Cloudinary URL in query params:', decodedUrl);
+      return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Invalid Image URL
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              The image URL in the link is invalid.
+            </p>
+          </div>
+        </div>
+      );
     }
     
-    // Always use the secure_url from query - it's the most reliable
-    const photo = await getPhotoData(photoId);
+    // Use the secure_url from query - it's guaranteed to work
     return (
       <PhotoViewer 
         photo={{
           photoId,
-          cloudinaryUrl: decodedUrl, // Always use the secure_url from query
-          timestamp: photo?.timestamp || new Date().toISOString(),
+          cloudinaryUrl: decodedUrl, // Use the secure_url from query - this is the REAL URL
+          timestamp: new Date().toISOString(),
         }}
       />
     );
   }
   
-  console.log('No secure_url in query params, falling back to API/database lookup');
+  console.log('⚠️ No secure_url in query params, trying to fetch from API/Cloudinary...');
   
   const photo = await getPhotoData(photoId);
 
