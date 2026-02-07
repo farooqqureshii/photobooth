@@ -131,6 +131,11 @@ export default async function PhotoPage({
   const photoId = resolvedParams.id;
   const secureUrlFromQuery = resolvedSearchParams.url;
   
+  console.log('=== PHOTO PAGE LOADED ===');
+  console.log('Photo ID from URL:', photoId);
+  console.log('Search params:', resolvedSearchParams);
+  console.log('Secure URL from query:', secureUrlFromQuery);
+  
   if (!photoId) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">

@@ -14,7 +14,11 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
   const [imageError, setImageError] = useState(false);
   
   // Log the URL for debugging
+  console.log('=== PHOTO VIEWER RENDERED ===');
+  console.log('Photo ID:', photo.photoId);
   console.log('Photo Cloudinary URL:', photo.cloudinaryUrl);
+  console.log('URL includes res.cloudinary.com:', photo.cloudinaryUrl.includes('res.cloudinary.com'));
+  console.log('URL length:', photo.cloudinaryUrl.length);
 
   const handleDownload = async () => {
     setIsDownloading(true);
