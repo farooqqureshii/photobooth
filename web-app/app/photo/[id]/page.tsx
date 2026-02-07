@@ -27,8 +27,10 @@ async function getPhotoData(photoId: string) {
       // If metadata not found, try to construct Cloudinary URL from photoId
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       if (cloudName && decodedPhotoId) {
-        // Cloudinary public_id might not have extension, try both
+        // Cloudinary public_id - construct URL (no extension needed, Cloudinary handles it)
+        // Try with and without format, Cloudinary will serve the original format
         const cloudinaryUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${decodedPhotoId}`;
+        console.log('Constructed Cloudinary URL (fallback):', cloudinaryUrl);
         return {
           photoId: decodedPhotoId,
           cloudinaryUrl,
@@ -39,8 +41,13 @@ async function getPhotoData(photoId: string) {
     }
 
     const data = await response.json();
-    // Ensure photoId matches the decoded version
-    return { ...data, photoId: decodedPhotoId };
+    console.log('Photo data from API:', data);
+    // Ensure photoId matches the decoded version and cloudinaryUrl exists
+    return { 
+      ...data, 
+      photoId: decodedPhotoId,
+      cloudinaryUrl: data.cloudinaryUrl || `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${decodedPhotoId}`
+    };
   } catch (error) {
     console.error('Error fetching photo:', error);
     // Fallback: try to construct Cloudinary URL

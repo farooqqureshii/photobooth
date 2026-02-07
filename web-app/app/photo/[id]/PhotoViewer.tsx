@@ -11,6 +11,10 @@ interface PhotoData {
 
 export default function PhotoViewer({ photo }: { photo: PhotoData }) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  // Log the URL for debugging
+  console.log('Photo Cloudinary URL:', photo.cloudinaryUrl);
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -57,13 +61,30 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
           {/* Photo */}
           <div className="p-6 bg-gray-50 dark:bg-gray-900">
             <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-lg">
-              <Image
-                src={photo.cloudinaryUrl}
-                alt="Photo"
-                fill
-                className="object-contain"
-                priority
-              />
+              {!imageError ? (
+                <Image
+                  src={photo.cloudinaryUrl}
+                  alt="Photo"
+                  fill
+                  className="object-contain"
+                  priority
+                  onError={() => {
+                    console.error('Next Image failed, falling back to img tag');
+                    setImageError(true);
+                  }}
+                  unoptimized={photo.cloudinaryUrl.includes('cloudinary.com')}
+                />
+              ) : (
+                <img
+                  src={photo.cloudinaryUrl}
+                  alt="Photo"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    console.error('Image failed to load:', photo.cloudinaryUrl);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -90,6 +111,21 @@ export default function PhotoViewer({ photo }: { photo: PhotoData }) {
                 {photo.photoId}
               </p>
             </div>
+            
+            {/* Debug: Show URL (remove in production) */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-1">Debug: Image URL</p>
+                <p className="text-xs font-mono text-yellow-900 dark:text-yellow-100 break-all">
+                  {photo.cloudinaryUrl}
+                </p>
+                {imageError && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    ⚠️ Image failed to load. Check browser console for errors.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Download Button */}
             <button
