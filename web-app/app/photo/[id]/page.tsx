@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import PhotoViewer from './PhotoViewer';
+import PhotoPageClient from './PhotoPageClient';
 
 async function getPhotoData(photoId: string) {
   // Handle undefined or empty photoId
@@ -116,81 +116,6 @@ export default async function PhotoPage({
   const photoId = resolvedParams.id;
   const secureUrlFromQuery = resolvedSearchParams.url;
   
-  console.log('=== PHOTO PAGE LOADED ===');
-  console.log('Photo ID from URL:', photoId);
-  console.log('Search params:', resolvedSearchParams);
-  console.log('Secure URL from query:', secureUrlFromQuery);
-  
-  if (!photoId) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Invalid Photo ID
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            No photo ID provided in the URL.
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
-  // If secure_url is in query params, use it directly (most reliable)
-  if (secureUrlFromQuery) {
-    const decodedUrl = decodeURIComponent(secureUrlFromQuery);
-    console.log('=== USING SECURE_URL FROM QUERY PARAMS ===');
-    console.log('✅ URL from query:', decodedUrl);
-    console.log('✅ Photo ID:', photoId);
-    console.log('✅ URL is valid:', decodedUrl.includes('res.cloudinary.com'));
-    
-    // Verify the URL is valid
-    if (!decodedUrl.includes('res.cloudinary.com')) {
-      console.error('❌ Invalid Cloudinary URL in query params:', decodedUrl);
-      return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Invalid Image URL
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              The image URL in the link is invalid.
-            </p>
-          </div>
-        </div>
-      );
-    }
-    
-    // Use the secure_url from query - it's guaranteed to work
-    return (
-      <PhotoViewer 
-        photo={{
-          photoId,
-          cloudinaryUrl: decodedUrl, // Use the secure_url from query - this is the REAL URL
-          timestamp: new Date().toISOString(),
-        }}
-      />
-    );
-  }
-  
-  console.log('⚠️ No secure_url in query params, trying to fetch from API/Cloudinary...');
-  
-  const photo = await getPhotoData(photoId);
-
-  if (!photo) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Photo Not Found
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            The photo you're looking for doesn't exist or has been removed.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return <PhotoViewer photo={photo} />;
+  // Use client component to read URL params reliably (client-side can read window.location)
+  return <PhotoPageClient photoId={photoId} secureUrlFromQuery={secureUrlFromQuery} />;
 }
