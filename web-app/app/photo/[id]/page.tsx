@@ -118,10 +118,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function PhotoPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default async function PhotoPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: Promise<{ id: string }> | { id: string };
+  searchParams?: Promise<{ url?: string }> | { url?: string };
+}) {
   // Handle both async and sync params (Next.js 15+ uses async params)
   const resolvedParams = await Promise.resolve(params);
+  const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : {};
   const photoId = resolvedParams.id;
+  const secureUrlFromQuery = resolvedSearchParams.url;
   
   if (!photoId) {
     return (
@@ -135,6 +143,26 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
           </p>
         </div>
       </div>
+    );
+  }
+  
+  // If secure_url is in query params, use it directly (most reliable)
+  if (secureUrlFromQuery) {
+    const decodedUrl = decodeURIComponent(secureUrlFromQuery);
+    console.log('Using secure_url from query params:', decodedUrl);
+    const photo = await getPhotoData(photoId);
+    if (photo) {
+      return <PhotoViewer photo={{ ...photo, cloudinaryUrl: decodedUrl }} />;
+    }
+    // Fallback: create photo object with secure_url from query
+    return (
+      <PhotoViewer 
+        photo={{
+          photoId,
+          cloudinaryUrl: decodedUrl,
+          timestamp: new Date().toISOString(),
+        }}
+      />
     );
   }
   

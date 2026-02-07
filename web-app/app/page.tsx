@@ -155,11 +155,14 @@ export default function Home() {
       console.log('Full upload response:', uploadData);
       
       // URL encode the photoId for the route
+      // IMPORTANT: Also encode the secure_url as a query param as backup
       const encodedPhotoId = encodeURIComponent(photoId);
-      const viewUrl = `${window.location.origin}/photo/${encodedPhotoId}`;
+      const encodedSecureUrl = encodeURIComponent(cloudinaryUrl);
+      const viewUrl = `${window.location.origin}/photo/${encodedPhotoId}?url=${encodedSecureUrl}`;
       setViewUrl(viewUrl);
       console.log('View URL:', viewUrl);
       console.log('Encoded Photo ID:', encodedPhotoId);
+      console.log('Secure URL (backup):', cloudinaryUrl);
 
       // Save metadata to API - CRITICAL: Save the secure_url, not a constructed URL
       const saveResponse = await fetch('/api/photos', {
