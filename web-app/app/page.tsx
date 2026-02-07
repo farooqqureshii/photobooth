@@ -136,15 +136,22 @@ export default function Home() {
       console.log('=== FULL CLOUDINARY UPLOAD RESPONSE ===');
       console.log(JSON.stringify(uploadData, null, 2));
       
+      // Check if upload actually succeeded
+      if (uploadData.error) {
+        console.error('❌ CLOUDINARY UPLOAD ERROR:', uploadData.error);
+        throw new Error(`Cloudinary upload failed: ${uploadData.error.message || JSON.stringify(uploadData.error)}`);
+      }
+      
       const cloudinaryUrl = uploadData.secure_url;
       if (!cloudinaryUrl) {
-        console.error('Missing secure_url! Full response:', uploadData);
+        console.error('❌ Missing secure_url! Full response:', uploadData);
+        console.error('Available fields:', Object.keys(uploadData));
         throw new Error('No secure_url in Cloudinary response. Check your upload preset configuration.');
       }
       
       // Verify the URL works by checking if it's a valid Cloudinary URL
       if (!cloudinaryUrl.includes('res.cloudinary.com')) {
-        console.error('Invalid secure_url format:', cloudinaryUrl);
+        console.error('❌ Invalid secure_url format:', cloudinaryUrl);
         throw new Error('Invalid Cloudinary URL format');
       }
       
@@ -153,23 +160,33 @@ export default function Home() {
       // Use the full public_id as photoId (Cloudinary handles folders/namespaces)
       const photoId = uploadData.public_id;
       if (!photoId) {
-        console.error('No public_id in upload response:', uploadData);
+        console.error('❌ No public_id in upload response:', uploadData);
+        console.error('Available fields:', Object.keys(uploadData));
         throw new Error('No public_id returned from Cloudinary. Check your upload preset configuration.');
       }
       
       console.log('=== UPLOAD SUCCESS ===');
-      console.log('Photo ID (public_id):', photoId);
-      console.log('Photo ID length:', photoId.length);
-      console.log('Cloudinary secure_url:', cloudinaryUrl);
-      console.log('Public ID from response:', uploadData.public_id);
+      console.log('✅ Photo ID (public_id):', photoId);
+      console.log('✅ Photo ID length:', photoId.length);
+      console.log('✅ Cloudinary secure_url:', cloudinaryUrl);
+      console.log('✅ Public ID from response:', uploadData.public_id);
+      console.log('✅ Image format:', uploadData.format);
+      console.log('✅ Image width:', uploadData.width);
+      console.log('✅ Image height:', uploadData.height);
       
       // CRITICAL: Test if the secure_url actually works
-      const testResponse = await fetch(cloudinaryUrl, { method: 'HEAD' });
-      if (!testResponse.ok) {
-        console.error(`⚠️ WARNING: secure_url returns ${testResponse.status}! URL: ${cloudinaryUrl}`);
-        console.error('This means the image might not exist at this URL');
-      } else {
-        console.log('✅ secure_url verified - image exists at:', cloudinaryUrl);
+      try {
+        const testResponse = await fetch(cloudinaryUrl, { method: 'HEAD' });
+        if (!testResponse.ok) {
+          console.error(`⚠️ WARNING: secure_url returns ${testResponse.status}! URL: ${cloudinaryUrl}`);
+          console.error('This means the image might not exist at this URL');
+          console.error('Response headers:', Object.fromEntries(testResponse.headers.entries()));
+        } else {
+          console.log('✅ secure_url verified - image exists at:', cloudinaryUrl);
+          console.log('✅ Content-Type:', testResponse.headers.get('content-type'));
+        }
+      } catch (testError) {
+        console.error('❌ Error testing secure_url:', testError);
       }
       
       // URL encode the photoId for the route
@@ -178,10 +195,16 @@ export default function Home() {
       const encodedSecureUrl = encodeURIComponent(cloudinaryUrl);
       const viewUrl = `${window.location.origin}/photo/${encodedPhotoId}?url=${encodedSecureUrl}`;
       setViewUrl(viewUrl);
+      
       console.log('=== VIEW URL GENERATED ===');
-      console.log('View URL (with secure_url backup):', viewUrl);
-      console.log('Photo ID for route:', photoId);
-      console.log('Secure URL (will be used):', cloudinaryUrl);
+      console.log('🔗 Full View URL:', viewUrl);
+      console.log('📸 Photo ID:', photoId);
+      console.log('🌐 Secure URL (Cloudinary):', cloudinaryUrl);
+      console.log('🔗 Encoded Secure URL:', encodedSecureUrl);
+      console.log('📋 URL Length:', viewUrl.length);
+      
+      // Show alert with the URL so user can copy it
+      alert(`Photo uploaded! View URL:\n\n${viewUrl}\n\n(Copy this URL to test if the image loads)`);
 
       // Save metadata to API - CRITICAL: Save the secure_url, not a constructed URL
       const saveResponse = await fetch('/api/photos', {
