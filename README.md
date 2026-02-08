@@ -58,8 +58,7 @@ npm run dev
 
 The project is configured for Vercel deployment. See `vercel.json` for configuration.
 
-## Notes
+## TO-DO
 
-- Photo metadata is stored in-memory (use a database for production)
+- Photo metadata is stored in-memory (use a database for production, Firebase?)
 - Camera access requires HTTPS in production
-- PDFs are generated client-side using jsPDF
